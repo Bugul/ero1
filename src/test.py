@@ -2,6 +2,7 @@ import collections
 import osmnx as ox
 import networkx as nx
 from networkx import MultiDiGraph, MultiGraph, Graph
+from random import choice
 
 place = "Semerville, France"
 digraph: MultiDiGraph = ox.graph_from_place(place, network_type='drive')
@@ -56,5 +57,13 @@ repeats = [
     if count == 2
 ]
 print("Routes dupliqués : ", repeats)
+start = choice(list(graph.nodes))
+try:
+    circuit = nx.eulerian_circuit(graph, start)
+    print("Routes à prendre : ")
+    for edge in circuit:
+        print(edge)
+except nx.NetworkXError:
+    print("Graph isn't eulerian")
 
 # Format print : noeud1, noeud2, distance
