@@ -5,9 +5,10 @@ from networkx import MultiDiGraph, MultiGraph, Graph
 from random import choice
 
 place = "Semerville, France"
-digraph: MultiDiGraph = ox.graph_from_place(place, network_type='drive')
+start_digraph: MultiDiGraph = ox.graph_from_place(place, network_type='drive')
+digraph = start_digraph.copy()
 graph: MultiGraph = digraph.to_undirected()
-G_projected = ox.project_graph(graph)
+ox.plot_graph(start_digraph)
 
 
 def odd_v(g):
@@ -18,8 +19,8 @@ def odd_v(g):
 def complete_path_two_nodes(g, vertex1, vertex2):
     shortest = nx.dijkstra_path(g, vertex1, vertex2)
     for i in range(len(shortest) - 1):
-        edge = g.get_edge_data(shortest[i], shortest[i + 1])[0]
-        g.add_edge(shortest[i], shortest[i + 1], length=edge["length"])
+        e = g.get_edge_data(shortest[i], shortest[i + 1])[0]
+        g.add_edge(shortest[i], shortest[i + 1], length=e["length"])
 
 
 def length_two_nodes(g, vertex1, vertex2):
@@ -29,8 +30,8 @@ def length_two_nodes(g, vertex1, vertex2):
 def duplicated_edges_graph(g):
     new_graph = Graph()
     odd_nodes = odd_v(g)
-    for node in odd_nodes:
-        new_graph.add_node(node)
+    for n in odd_nodes:
+        new_graph.add_node(n)
     for i in range(len(odd_nodes) - 1):
         for j in range(i + 1, len(odd_nodes)):
             new_graph.add_edge(odd_nodes[i], odd_nodes[j], length=length_two_nodes(g, odd_nodes[i], odd_nodes[j]))
@@ -43,7 +44,8 @@ def to_eulerian_graph(g):
         complete_path_two_nodes(g, dup[0], dup[1])
 
 
-print("Liste des sommets de degré impair : ", odd_v(G_projected))
+print("### DRONE ###")
+print("Liste des sommets de degré impair : ", odd_v(graph))
 print("Matching : ", duplicated_edges_graph(graph))
 print("Plus court chemin entre noeud 1812939356 et 1613798843 : ", nx.dijkstra_path(graph, 1812939356, 1613798843))
 print("Liste des routes avant duplication : ", graph.edges.data("length"))
@@ -65,5 +67,13 @@ try:
         print(edge)
 except nx.NetworkXError:
     print("Graph isn't eulerian")
+
+print("### DENEIGEUSE ###")
+largest = max(nx.strongly_connected_components(digraph), key=len)
+for node in start_digraph.nodes():
+    if node not in largest:
+        digraph.remove_node(node)
+ox.plot_graph(digraph)
+print("Is strongly connected ?", nx.is_strongly_connected(digraph))
 
 # Format print : noeud1, noeud2, distance
