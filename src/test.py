@@ -1,13 +1,13 @@
 import collections
 import osmnx as ox
 import networkx as nx
-from networkx import MultiDiGraph, MultiGraph, Graph
+from networkx import MultiDiGraph, MultiGraph, DiGraph, Graph
 from random import choice
 
 place = "Semerville, France"
-start_digraph: MultiDiGraph = ox.graph_from_place(place, network_type='drive')
+start_digraph: DiGraph = ox.graph_from_place(place, network_type='drive')
 digraph = start_digraph.copy()
-graph: MultiGraph = digraph.to_undirected()
+graph: Graph = digraph.to_undirected()
 ox.plot_graph(start_digraph)
 
 
@@ -44,6 +44,23 @@ def to_eulerian_graph(g):
         complete_path_two_nodes(g, dup[0], dup[1])
 
 
+# DENEIGEUSE
+
+def add_for_directed(g):
+    fCost, fDict = nx.network_simplex(g, weight="length")
+    new_graph = nx.MultiDiGraph(g)
+
+    for k, v in fDict.items():
+        for s_key, s_value in v.items():
+            for i in range(s_value[0]):
+                shortest_path = nx.shortest_path(g, s_key, k, weight="length")
+                for j in range(len(shortest_path) - 1):
+                    new_graph.add_edge(shortest_path[j], shortest_path[j + 1], length=g.get_edge_data(shortest_path[j], shortest_path[j + 1])[0]["length"])
+    for n1 in new_graph.nodes():
+        del new_graph.nodes[n1]["demand"]
+    return new_graph
+
+
 print("### DRONE ###")
 print("Liste des sommets de degré impair : ", odd_v(graph))
 print("Matching : ", duplicated_edges_graph(graph))
@@ -75,17 +92,18 @@ for node in start_digraph.nodes():
         digraph.remove_node(node)
 ox.plot_graph(digraph)
 print("Is strongly connected ?", nx.is_strongly_connected(digraph))
-print(list(nx.strongly_connected_components(G_projected)))
-for e in G_projected.nodes():
-    print(e,G_projected.out_degree(e)- G_projected.in_degree(e))
-# Format print : noeud1, noeud2, distance
-def add_for_directed(g):
-    fCost, fDict = nx.network_simplex(g)
-    newGraph = nx.MultiDiGraph(g)
+print(list(nx.strongly_connected_components(digraph)))
+for e in digraph.nodes():
+    print(e, digraph.in_degree(e) - digraph.out_degree(e))
+# Set node attribute "demand"
+node_dict = dict()
+for n in digraph.nodes():
+    node_dict[n] = digraph.in_degree(n) - digraph.out_degree(n)
+nx.set_node_attributes(digraph, node_dict, "demand")
+print("Demande : ", digraph.nodes.data("demand"))
+digraph = add_for_directed(digraph)
+euler_circuit = list(nx.eulerian_circuit(digraph))
+for road in euler_circuit:
+    print(road)
 
-    for k, v in fDict.items():
-        if isinstance(v, dict):
-            for s_key, s_value in v.items():
-                for i in range(s_value):
-                    newGraph.add_edge(k, s_key, weight=g.get_edge_data(k, s_key)["weight"])
-    return newGraph
+# Format print : noeud1, noeud2, distance
