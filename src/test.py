@@ -75,5 +75,17 @@ for node in start_digraph.nodes():
         digraph.remove_node(node)
 ox.plot_graph(digraph)
 print("Is strongly connected ?", nx.is_strongly_connected(digraph))
-
+print(list(nx.strongly_connected_components(G_projected)))
+for e in G_projected.nodes():
+    print(e,G_projected.out_degree(e)- G_projected.in_degree(e))
 # Format print : noeud1, noeud2, distance
+def add_for_directed(g):
+    fCost, fDict = nx.network_simplex(g)
+    newGraph = nx.MultiDiGraph(g)
+
+    for k, v in fDict.items():
+        if isinstance(v, dict):
+            for s_key, s_value in v.items():
+                for i in range(s_value):
+                    newGraph.add_edge(k, s_key, weight=g.get_edge_data(k, s_key)["weight"])
+    return newGraph
