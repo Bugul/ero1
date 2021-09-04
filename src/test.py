@@ -45,6 +45,13 @@ def to_eulerian_graph(g):
 
 
 # DENEIGEUSE
+def create(g):
+    G = nx.DiGraph
+    for e in g.nodes():
+        G.add_node(e, demand=g.out_degree(e) - g.in_degree(e))
+    for u, v, w in g.edges(data=True):
+        G.add_edge(u, v, weight=round(w["length"]))
+    return G
 
 def add_for_directed(g):
     fCost, fDict = nx.network_simplex(g, weight="length")
