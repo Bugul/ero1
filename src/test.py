@@ -4,12 +4,6 @@ import networkx as nx
 from networkx import MultiDiGraph, MultiGraph, DiGraph, Graph
 from random import choice
 
-place = "Semerville, France"
-start_digraph: DiGraph = ox.graph_from_place(place, network_type='drive')
-digraph = start_digraph.copy()
-graph: Graph = digraph.to_undirected()
-ox.plot_graph(start_digraph)
-
 
 def odd_v(g):
     node_list = [vertex for vertex, deg in g.degree() if deg % 2 == 1]
@@ -44,7 +38,13 @@ def to_eulerian_graph(g):
         complete_path_two_nodes(g, dup[0], dup[1])
 
 
+def round_digraph(g):
+    for n1, n2, data in g.edges(data=True):
+        g[n1][n2][0]["length"] = round(g[n1][n2][0]["length"])
+
+
 # DENEIGEUSE
+
 
 def add_for_directed(g):
     fCost, fDict = nx.network_simplex(g, weight="length")
@@ -61,49 +61,61 @@ def add_for_directed(g):
     return new_graph
 
 
+def add_demand(g):
+    node_dict = dict()
+    for n in g.nodes():
+        node_dict[n] = g.in_degree(n) - g.out_degree(n)
+    nx.set_node_attributes(g, node_dict, "demand")
+
+
+place = "Binas, France"
+start_digraph: DiGraph = ox.graph_from_place(place, network_type='drive')
+digraph = start_digraph.copy()
+graph: Graph = digraph.to_undirected()
+ox.plot_graph(start_digraph)
+
 print("### DRONE ###")
-print("Liste des sommets de degré impair : ", odd_v(graph))
-print("Matching : ", duplicated_edges_graph(graph))
-print("Plus court chemin entre noeud 1812939356 et 1613798843 : ", nx.dijkstra_path(graph, 1812939356, 1613798843))
-print("Liste des routes avant duplication : ", graph.edges.data("length"))
+print("Nombre de sommets de degré impair : ", len(odd_v(graph)))
+print("Nombre de routes avant duplication : ", len(graph.edges.data("length")))
 print("Eulerianisation du graphe...")
 to_eulerian_graph(graph)
-print("Liste des routes après duplication : ", graph.edges.data("length"))
+print("Nombre de routes après duplication : ", len(graph.edges.data("length")))
 
-repeats = [
-    item
-    for item, count in collections.Counter(graph.edges.data("length")).items()
-    if count == 2
-]
-print("Routes dupliqués : ", repeats)
 start = choice(list(graph.nodes))
+print("Choix aléatoire du point de départ : ", start)
 try:
     circuit = nx.eulerian_circuit(graph, start)
-    print("Routes à prendre : ")
+    f_drone = open("drone_path.txt", "w")
     for edge in circuit:
-        print(edge)
+        f_drone.write(','.join(map(str, edge)) + '\n')
+    f_drone.close()
 except nx.NetworkXError:
     print("Graph isn't eulerian")
 
 print("### DENEIGEUSE ###")
+
+print("Suppression des routes ne faisant pas parti du plus grand graphe fortement connexe")
 largest = max(nx.strongly_connected_components(digraph), key=len)
 for node in start_digraph.nodes():
     if node not in largest:
         digraph.remove_node(node)
 ox.plot_graph(digraph)
+
 print("Is strongly connected ?", nx.is_strongly_connected(digraph))
-print(list(nx.strongly_connected_components(digraph)))
-for e in digraph.nodes():
-    print(e, digraph.in_degree(e) - digraph.out_degree(e))
 # Set node attribute "demand"
-node_dict = dict()
-for n in digraph.nodes():
-    node_dict[n] = digraph.in_degree(n) - digraph.out_degree(n)
-nx.set_node_attributes(digraph, node_dict, "demand")
-print("Demande : ", digraph.nodes.data("demand"))
+
+round_digraph(digraph)
+add_demand(digraph)
+print("Demande : ")
+for demand in digraph.nodes.data("demand"):
+    if demand[1] != 0:
+        print(demand)
+print("Egalisation...")
 digraph = add_for_directed(digraph)
 euler_circuit = list(nx.eulerian_circuit(digraph))
+f_snow = open("snow_path.txt", "w")
 for road in euler_circuit:
-    print(road)
+    f_snow.write(','.join(map(str, road)) + '\n')
+f_snow.close()
 
 # Format print : noeud1, noeud2, distance
