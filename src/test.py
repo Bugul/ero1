@@ -1,7 +1,7 @@
 import collections
 import osmnx as ox
 import networkx as nx
-from networkx import MultiDiGraph, MultiGraph, DiGraph, Graph
+from networkx import DiGraph, Graph
 from random import choice
 
 
@@ -39,8 +39,10 @@ def to_eulerian_graph(g):
 
 
 def round_digraph(g):
+    new_graph = DiGraph()
     for n1, n2, data in g.edges(data=True):
-        g[n1][n2][0]["length"] = round(g[n1][n2][0]["length"])
+        new_graph.add_edge(n1, n2, length=round(data["length"]))
+    return new_graph
 
 
 # DENEIGEUSE
@@ -49,13 +51,12 @@ def round_digraph(g):
 def add_for_directed(g):
     fCost, fDict = nx.network_simplex(g, weight="length")
     new_graph = nx.MultiDiGraph(g)
-
     for k, v in fDict.items():
         for s_key, s_value in v.items():
-            for i in range(s_value[0]):
+            for i in range(s_value):
                 shortest_path = nx.shortest_path(g, s_key, k, weight="length")
                 for j in range(len(shortest_path) - 1):
-                    new_graph.add_edge(shortest_path[j], shortest_path[j + 1], length=g.get_edge_data(shortest_path[j], shortest_path[j + 1])[0]["length"])
+                    new_graph.add_edge(shortest_path[j], shortest_path[j + 1], length=g.get_edge_data(shortest_path[j], shortest_path[j + 1])["length"])
     for n1 in new_graph.nodes():
         del new_graph.nodes[n1]["demand"]
     return new_graph
@@ -68,7 +69,15 @@ def add_demand(g):
     nx.set_node_attributes(g, node_dict, "demand")
 
 
-place = "Binas, France"
+def demand_count(g):
+    c = 0
+    for demand in g.nodes.data("demand"):
+        if demand[1] != 0:
+            c += 1
+    return c
+
+
+place = "Le Kremlin-Bicêtre, France"
 start_digraph: DiGraph = ox.graph_from_place(place, network_type='drive')
 digraph = start_digraph.copy()
 graph: Graph = digraph.to_undirected()
@@ -104,14 +113,12 @@ ox.plot_graph(digraph)
 print("Is strongly connected ?", nx.is_strongly_connected(digraph))
 # Set node attribute "demand"
 
-round_digraph(digraph)
+digraph = round_digraph(digraph)
 add_demand(digraph)
-print("Demande : ")
-for demand in digraph.nodes.data("demand"):
-    if demand[1] != 0:
-        print(demand)
+print("Nombre de demande : ", demand_count(digraph))
 print("Egalisation...")
 digraph = add_for_directed(digraph)
+print("Is strongly connected ?", nx.is_strongly_connected(digraph))
 euler_circuit = list(nx.eulerian_circuit(digraph))
 f_snow = open("snow_path.txt", "w")
 for road in euler_circuit:
