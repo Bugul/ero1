@@ -30,4 +30,6 @@ Tuto installation OSMnx :
 \n
 14. Cliquer sur "Add new run configuration..." -> Python, nommer la config comme souhaité, dans "Script path:" choisir le script voulu (par exemple test.py), puis Python interpreter, sélectionner "Python X.Y (ox)" puis "Apply" -> "OK"
 
-Vous pouvez tester avec test.py pour l'instant voir si tout marche
+# Lancer le script
+
+Il suffit de lancer snow.py, l'itinéraire du drone sera enregistré dans drone_path.txt et celui de la déneigeuse dans snow_path.txt
